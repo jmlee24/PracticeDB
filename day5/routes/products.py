@@ -1,0 +1,79 @@
+"""
+상품 API 라우트 — Day 4 완성본
+================================
+CRUD 5개가 모두 완성된 상태입니다.
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from day5.database import get_db
+from day5.models import Product, Category
+from day5.schemas import ProductCreate, ProductResponse
+
+router = APIRouter(prefix="/products", tags=["products"])
+
+
+@router.post("/", response_model=ProductResponse, status_code=201)
+def create_product(data: ProductCreate, db: Session = Depends(get_db)):
+    """상품 생성"""
+    category = db.query(Category).filter(Category.id == data.category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없습니다")
+    product = Product(
+        name=data.name,
+        description=data.description,
+        price=data.price,
+        stock=data.stock,
+        category_id=data.category_id,
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.get("/", response_model=list[ProductResponse])
+def list_products(category_id: int | None = Query(default=None), db: Session = Depends(get_db)):
+    """상품 목록 조회 (카테고리 필터 선택)"""
+    query = db.query(Product)
+    if category_id is not None:
+        query = query.filter(Product.category_id == category_id)
+    return query.all()
+
+
+@router.get("/{product_id}", response_model=ProductResponse)
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    """상품 단건 조회"""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다")
+    return product
+
+
+@router.put("/{product_id}", response_model=ProductResponse)
+def update_product(product_id: int, data: ProductCreate, db: Session = Depends(get_db)):
+    """상품 수정"""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다")
+    category = db.query(Category).filter(Category.id == data.category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없습니다")
+    product.name = data.name
+    product.description = data.description
+    product.price = data.price
+    product.stock = data.stock
+    product.category_id = data.category_id
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.delete("/{product_id}", status_code=204)
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    """상품 삭제"""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다")
+    db.delete(product)
+    db.commit()
