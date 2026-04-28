@@ -3,6 +3,8 @@
 > Day 1~7 워크북에 등장하는 모든 명령·함수·문법을 카테고리별로 정리한 학습용 레퍼런스.
 > **모르는 게 나오면 `Ctrl+F`** — 그게 전부입니다.
 
+> **듀얼 트랙 안내**: 각 Day 는 `dayN/complete/` (참고용 완성형) 와 `dayN/practice/` (변형 빈칸 문제) 두 트랙으로 나뉘어 있습니다. 아래 모든 `uvicorn dayN.main:app` 명령은 실제로는 `uvicorn dayN.complete.main:app` 또는 `uvicorn dayN.practice.main:app` 로 사용하세요.
+
 ---
 
 ## 이 문서를 읽는 법
@@ -27,17 +29,17 @@
 
 ## Day 1~7 학습 로드맵
 
-| Day | 테마 | 신규 핵심 명령 (요약) | 난이도 |
-|-----|------|----------------------|--------|
-| 1 | CRUD 기초 | `Column` · `Base.metadata.create_all` · `db.add/commit` · `Depends(get_db)` · `HTTPException` | ★☆☆ |
-| 2 | 상품 + 외래키 | `ForeignKey` · `relationship("X", back_populates=...)` · FK 사전 검증 | ★☆☆ |
-| 3 | 주문 + 트랜잭션 | `db.flush()` · `db.rollback()` · try/except · `list[XxxResponse]` nested | ★★☆ |
-| 4 | 페이지네이션·검색 | `query.count()` · `offset().limit()` · `ilike()` · `getattr` 동적정렬 | ★★☆ |
-| 5 | Alembic·인덱스 | `index=True` · `Index()` · `UniqueConstraint` · `alembic upgrade head` | ★★☆ |
-| 6 | MES 공정·BOM | 자기참조 FK · `remote_side` · `foreign_keys=[col]` (dual FK) | ★★★ |
-| 7 | MES 작업지시·상태 | `@patch` · `func.count/sum/coalesce` · 상태머신 `ALLOWED_TRANSITIONS` | ★★★ |
+| Day | 테마 | 신규 핵심 명령 (요약) | complete (참고) | practice (변형) |
+|-----|------|----------------------|----------------|----------------|
+| 1 | CRUD 기초 | `Column` · `db.add/commit` · `Depends(get_db)` · `HTTPException` | Category + `is_active` (default True) | Category + `is_published` (default False) |
+| 2 | 상품 + 외래키 | `ForeignKey` · `relationship("X", back_populates=...)` · FK 사전 검증 | Category 1:N Product | Brand 1:N Item |
+| 3 | 주문 + 트랜잭션 | `db.flush()` · `db.rollback()` · try/except · nested 리스트 | Order/OrderItem 재고차감 | Booking/BookingSeat 좌석예약 |
+| 4 | 페이지네이션·검색 | `query.count()` · `offset().limit()` · `ilike()` · `getattr` 동적정렬 | list_products + 가격범위 | list_items + 재고범위 |
+| 5 | Alembic·인덱스 | `index=True` · `Index()` · `UniqueConstraint` · `alembic upgrade head` | UQ(name, category_id) | barcode 추가 + UQ(name, brand_id) |
+| 6 | MES 공정·BOM | 자기참조 FK · `remote_side` · `foreign_keys=[col]` (dual FK) | Process + BOM | Department + Recipe |
+| 7 | MES 작업지시·상태 | `@patch` · `func.count/sum/coalesce` · 상태머신 `ALLOWED_TRANSITIONS` | WorkOrder (4 상태) | Shipment (5 상태, **HOLD 추가**) |
 
-> 포인트: **각 Day의 완성 코드 = 다음 Day TODO의 정답**입니다. 막히면 다음 Day를 곁눈질하세요.
+> 포인트: **각 Day 의 complete 코드 = practice TODO 의 정답 템플릿**입니다. 막히면 같은 Day 의 complete 폴더를 옆에 띄워두세요.
 
 ---
 
@@ -53,7 +55,7 @@ docker compose up -d
 docker compose down -v && docker compose up -d
 
 # C. FastAPI 서버 기동 (StudyDB/ 루트에서 실행!)
-uvicorn day1.main:app --reload          # Day 번호만 바꿔가며 재사용
+uvicorn day1.complete.main:app --reload   # 또는 day1.practice.main:app --port 8001          # Day 번호만 바꿔가며 재사용
 
 # D. PostgreSQL 셸 진입
 docker compose exec db psql -U study -d studydb
@@ -159,15 +161,15 @@ db.query(Product).filter(Product.price >= 100).order_by(Product.price.desc()).al
 
 ## 3. uvicorn (FastAPI 서버)
 
-### `uvicorn day1.main:app --reload` `[전 Day]`
+### `uvicorn dayN.{complete,practice}.main:app --reload` `[전 Day]`
 - 역할: ASGI 서버를 띄워 FastAPI 앱을 실행.
-- 인자: `day1.main:app` = `day1/main.py` 안의 `app` 변수.
+- 인자: `day1.complete.main:app` = `day1/complete/main.py` 의 `app` 변수.
 - 옵션: `--reload` 코드 변경 시 자동 재시작 (개발용).
 - 접속: http://localhost:8000/docs (Swagger UI).
 
-> 주의: 반드시 **`StudyDB/` 최상위에서** 실행. `day1/` 안에서 실행하면 `ModuleNotFoundError`.
+> 주의: 반드시 **`StudyDB/` 최상위에서** 실행. `day1/complete/` 안에서 실행하면 `ModuleNotFoundError`.
 
-### `uvicorn day1.main:app --reload --port 8001` `[트러블슈팅]`
+### `uvicorn dayN.practice.main:app --reload --port 8001` `[트러블슈팅]`
 - 역할: 8000이 점유 중일 때 다른 포트로 실행.
 
 **셀프 체크 — uvicorn**
@@ -1050,7 +1052,7 @@ curl -X DELETE http://localhost:8000/products/1
 | `remote_side` (자기참조) | [§6](#6-sqlalchemy-모델-정의) |
 | `text("SELECT 1")` | [§7](#7-sqlalchemy-세션--쿼리) |
 | `try/except + rollback` | [§8](#8-fastapi-라우팅--의존성) |
-| `uvicorn day1.main:app --reload` | [§3](#3-uvicorn-fastapi-서버) |
+| `uvicorn day1.complete.main:app --reload   # 또는 day1.practice.main:app --port 8001` | [§3](#3-uvicorn-fastapi-서버) |
 | `venv` (`python -m venv`) | [§2](#2-python--pip--venv) |
 | `__table_args__` | [§6](#6-sqlalchemy-모델-정의) |
 | `__tablename__` | [§6](#6-sqlalchemy-모델-정의) |

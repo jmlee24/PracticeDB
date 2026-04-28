@@ -1,0 +1,2 @@
+# 이 폴더에 alembic revision 으로 생성된 마이그레이션 파일이 들어간다.
+# 학습용으로 빈 상태로 둔다 — 사용자가 직접 alembic revision --autogenerate 실행.
